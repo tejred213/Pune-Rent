@@ -86,17 +86,9 @@ postgresql://pune_rent_user:PASSWORD@dpg-xxxxx-yyyy.render.onrender.com:5432/pun
 - ⚠️ First deploy may fail with DB table errors (normal, see Step 6)
 
 ### Step 6: Initialize Database
-After first deploy finishes, trigger table creation:
 
-**Option A: Via Render Shell** (Easiest)
-1. Open Render Web Service → **Shell** tab
-2. Run:
-```bash
-cd /var/task
-python -c "from app import app, db; app.app_context().push(); db.create_all(); print('Tables created!')"
-```
+⚠️ **Render Free Tier**: No shell access available. Use this method instead:
 
-**Option B: Via Python Script**
 1. Create `backend/init_db.py`:
 ```python
 from app import app, db
@@ -107,7 +99,19 @@ if __name__ == "__main__":
         print("Database tables created successfully!")
 ```
 
-2. Push to GitHub and it will run on next deploy
+2. Run locally to initialize database:
+```bash
+cd backend
+export DATABASE_URL="postgresql://pune_rent_user:PASSWORD@dpg-xxxxx-yyyy.render.onrender.com:5432/pune_rent"
+python init_db.py
+```
+
+**Alternative**: Add to `Procfile` to run on deploy:
+```
+web: python init_db.py && gunicorn app:app
+```
+
+This will initialize tables on every deploy (safe to run multiple times).
 
 ### Step 7: Verify Backend
 ```bash
