@@ -12,9 +12,12 @@ app = Flask(__name__)
 # Use DATABASE_URL for production (Render), fallback to SQLite for local development
 database_url = os.getenv('DATABASE_URL', 'sqlite:///properties.db')
 
-# Fix PostgreSQL URI scheme (Render uses postgres://, but SQLAlchemy 2.0+ requires postgresql://)
+# Fix PostgreSQL URI scheme
 if database_url and database_url.startswith('postgres://'):
-    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    database_url = database_url.replace('postgres://', 'postgresql+psycopg://', 1)
+elif database_url and database_url.startswith('postgresql://'):
+    # Use psycopg (v3) driver instead of psycopg2
+    database_url = database_url.replace('postgresql://', 'postgresql+psycopg://', 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
