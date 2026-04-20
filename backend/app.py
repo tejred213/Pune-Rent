@@ -3,21 +3,26 @@ from flask_cors import CORS
 from models import db, Property
 import os
 from dotenv import load_dotenv
+from apscheduler.schedulers.background import BackgroundScheduler
+import logging
 
 load_dotenv()
 
 app = Flask(__name__)
 
+# Configure logging for scheduler
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # Database Configuration
 # Use DATABASE_URL for production (Render), fallback to SQLite for local development
 database_url = os.getenv('DATABASE_URL', 'sqlite:///properties.db')
 
-# Fix PostgreSQL URI scheme
+# Fix PostgreSQL URI scheme - psycopg2-binary uses postgresql+psycopg2
 if database_url and database_url.startswith('postgres://'):
-    database_url = database_url.replace('postgres://', 'postgresql+psycopg://', 1)
+    database_url = database_url.replace('postgres://', 'postgresql+psycopg2://', 1)
 elif database_url and database_url.startswith('postgresql://'):
-    # Use psycopg (v3) driver instead of psycopg2
-    database_url = database_url.replace('postgresql://', 'postgresql+psycopg://', 1)
+    database_url = database_url.replace('postgresql://', 'postgresql+psycopg2://', 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -31,6 +36,34 @@ CORS(app)
 # Create database tables
 with app.app_context():
     db.create_all()
+
+# ============ BACKGROUND SCHEDULER ============
+# Keep-alive job to prevent server spin-down on free-tier deployments
+def keep_alive_job():
+    """Periodic job to keep backend alive (runs every 50 seconds)"""
+    try:
+        with app.app_context():
+            # Perform a simple database query to keep connection active
+            Property.query.count()
+            logger.info('✓ Keep-alive check: Backend is active')
+    except Exception as e:
+        logger.error(f'✗ Keep-alive check failed: {str(e)}')
+
+# Initialize scheduler
+scheduler = BackgroundScheduler(daemon=True)
+scheduler.add_job(
+    func=keep_alive_job,
+    trigger='interval',
+    seconds=50,
+    id='keep_alive_job',
+    name='Keep Backend Alive',
+    replace_existing=True
+)
+
+# Start scheduler if not already running
+if not scheduler.running:
+    scheduler.start()
+    logger.info('✓ Background scheduler started - Keep-alive job running every 50 seconds')
 
 # ============ API ROUTES ============
 
@@ -177,4 +210,9 @@ def internal_error(error):
     return jsonify({'error': 'Internal server error'}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    try:
+        app.run(debug=True, port=5001)
+    finally:
+        # Shutdown scheduler gracefully
+        if scheduler.running:
+            scheduler.shutdown()
