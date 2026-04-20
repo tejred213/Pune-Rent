@@ -30,8 +30,19 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Initialize Database
 db.init_app(app)
 
-# Enable CORS for frontend communication
-CORS(app)
+# Enable CORS for frontend communication with specific domains
+CORS(app, resources={
+    r"/api/*": {
+        "origins": [
+            "https://www.punerent.in",
+            "https://punerent.in",
+            "http://localhost:5173",  # Vite dev server
+            "http://localhost:3000"   # Local development
+        ],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 
 # Create database tables
 with app.app_context():
