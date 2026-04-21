@@ -37,10 +37,13 @@ CORS(app, resources={
             "https://www.punerent.in",
             "https://punerent.in",
             "http://localhost:5173",  # Vite dev server
-            "http://localhost:3000"   # Local development
+            "http://localhost:3000",  # Local development
+            "http://localhost:5001"   # Local backend
         ],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True,
+        "expose_headers": ["Content-Type"]
     }
 })
 
