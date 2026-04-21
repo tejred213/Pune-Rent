@@ -544,11 +544,18 @@ export default function App() {
 
   const areaBounds = getAreaBounds();
 
-  // Map provider URLs - Free providers that work without API keys
+  // Get Stadia Maps API key from environment
+  const stadiaApiKey = import.meta.env.VITE_STADIA_MAPS_API_KEY || '';
+
+  // Map provider URLs - Stadia Maps requires API key for authentication
   const mapProviders = {
     streets: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    dark: 'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}.png',
-    light: 'https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}.png',
+    dark: stadiaApiKey 
+      ? `https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}.png?api_key=${stadiaApiKey}`
+      : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', // Fallback to OSM if no API key
+    light: stadiaApiKey
+      ? `https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}.png?api_key=${stadiaApiKey}`
+      : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', // Fallback to OSM if no API key
     topo: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
     satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
   };
@@ -787,7 +794,10 @@ export default function App() {
           attribution={
             mapStyle === 'streets' ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' :
             mapStyle === 'satellite' ? '&copy; Esri' :
-            '&copy; <a href="https://stadiamaps.com">Stadia Maps</a> &copy; <a href="https://openmaptiles.org">OpenMapTiles</a>'
+            mapStyle === 'topo' ? '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>' :
+            (mapStyle === 'dark' || mapStyle === 'light') && stadiaApiKey 
+              ? '&copy; <a href="https://stadiamaps.com">Stadia Maps</a> &copy; <a href="https://openmaptiles.org">OpenMapTiles</a>'
+              : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           }
           url={mapProviders[mapStyle]}
         />
