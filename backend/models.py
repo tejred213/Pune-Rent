@@ -12,6 +12,7 @@ class Property(db.Model):
     price = db.Column(db.String(50), nullable=False)  # e.g., "25K"
     config = db.Column(db.String(50), nullable=False)  # e.g., "2 BHK"
     area = db.Column(db.String(100), nullable=False)  # e.g., "Koregaon Park"
+    society_name = db.Column(db.String(150), default='')
     flag = db.Column(db.String(100), default=None)  # e.g., "⚠️ Above avg"
     description = db.Column(db.Text, default='')
     owner_name = db.Column(db.String(100), default='')
@@ -27,6 +28,7 @@ class Property(db.Model):
             'price': self.price,
             'config': self.config,
             'area': self.area,
+            'society_name': self.society_name,
             'flag': self.flag,
             'description': self.description,
             'owner_name': self.owner_name,

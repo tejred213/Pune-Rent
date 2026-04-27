@@ -123,6 +123,7 @@ def create_property():
             price=data['price'],
             config=data['config'],
             area=data['area'],
+            society_name=data.get('society_name', ''),
             flag=data.get('flag', None),
             description=data.get('description', ''),
             owner_name=data.get('owner_name', ''),
@@ -160,6 +161,8 @@ def update_property(id):
             property.config = data['config']
         if 'area' in data:
             property.area = data['area']
+        if 'society_name' in data:
+            property.society_name = data['society_name']
         if 'flag' in data:
             property.flag = data['flag']
         if 'description' in data:

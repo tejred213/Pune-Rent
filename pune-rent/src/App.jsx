@@ -345,6 +345,39 @@ function MapClickHandler({ onMapClick }) {
   return null;
 }
 
+function PropertyClusterLayer({ properties, isDarkMode, onSelectProperty }) {
+  const map = useMap();
+
+  const handleClusterClick = (event) => {
+    const bounds = event?.layer?.getBounds?.();
+    if (!bounds || !bounds.isValid()) return;
+    map.flyToBounds(bounds, { padding: [40, 40], maxZoom: 17, duration: 0.6 });
+  };
+
+  return (
+    <MarkerClusterGroup 
+      key={`cluster-group-${isDarkMode}`} 
+      chunkedLoading 
+      maxClusterRadius={60}
+      iconCreateFunction={(cluster) => createClusterCustomIcon(cluster, isDarkMode)}
+      eventHandlers={{ clusterclick: handleClusterClick }}
+    >
+      {properties.map((prop) => (
+        <Marker 
+          key={`${prop.id}-${isDarkMode}`} 
+          position={[prop.lat, prop.lng]} 
+          icon={createCustomIcon(prop, isDarkMode)}
+          eventHandlers={{
+            click: () => {
+              onSelectProperty(prop);
+            }
+          }}
+        />
+      ))}
+    </MarkerClusterGroup>
+  );
+}
+
 export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [activeFilter, setActiveFilter] = useState('All');
@@ -372,6 +405,7 @@ export default function App() {
     price: '',
     config: '1 BHK',
     area: '',
+    society_name: '',
     owner_name: '',
     owner_phone: '',
     description: ''
@@ -422,8 +456,8 @@ export default function App() {
 
   // Submit new property to backend
   const handleSubmitProperty = async () => {
-    if (!formData.price || !formData.area) {
-      alert('Please fill in at least Price and Area');
+    if (!formData.price || !formData.area || !formData.society_name) {
+      alert('Please fill in Price, Area, and Society Name');
       return;
     }
 
@@ -438,6 +472,7 @@ export default function App() {
           price: formData.price,
           config: formData.config,
           area: formData.area,
+          society_name: formData.society_name,
           owner_name: formData.owner_name,
           owner_phone: formData.owner_phone,
           description: formData.description
@@ -457,6 +492,7 @@ export default function App() {
         price: '',
         config: '1 BHK',
         area: '',
+        society_name: '',
         owner_name: '',
         owner_phone: '',
         description: ''
@@ -831,26 +867,14 @@ export default function App() {
           />
         )}
 
-        <MarkerClusterGroup 
-          key={`cluster-group-${isDarkMode}`} 
-          chunkedLoading 
-          maxClusterRadius={60}
-          iconCreateFunction={(cluster) => createClusterCustomIcon(cluster, isDarkMode)}
-        >
-          {filteredProperties.map((prop) => (
-            <Marker 
-              key={`${prop.id}-${isDarkMode}`} 
-              position={[prop.lat, prop.lng]} 
-              icon={createCustomIcon(prop, isDarkMode)}
-              eventHandlers={{
-                click: () => {
-                  setSelectedProperty(prop);
-                  setShowDetailsModal(true);
-                }
-              }}
-            />
-          ))}
-        </MarkerClusterGroup>
+        <PropertyClusterLayer
+          properties={filteredProperties}
+          isDarkMode={isDarkMode}
+          onSelectProperty={(prop) => {
+            setSelectedProperty(prop);
+            setShowDetailsModal(true);
+          }}
+        />
 
         {/* Map Click Handler */}
         <MapClickHandler onMapClick={handleMapClick} />
@@ -1031,6 +1055,25 @@ export default function App() {
                   fontWeight: '700',
                   color: isDarkMode ? '#fff' : '#111'
                 }}>{selectedProperty.area}</div>
+              </div>
+
+              {/* Society */}
+              <div style={{
+                padding: '12px',
+                backgroundColor: isDarkMode ? '#222' : '#f5f5f5',
+                borderRadius: '8px',
+                borderLeft: `4px solid #14b8a6`
+              }}>
+                <div style={{
+                  fontSize: '12px',
+                  color: isDarkMode ? '#aaa' : '#666',
+                  marginBottom: '4px'
+                }}>🏢 Society</div>
+                <div style={{
+                  fontSize: '18px',
+                  fontWeight: '700',
+                  color: isDarkMode ? '#fff' : '#111'
+                }}>{selectedProperty.society_name || 'Not provided'}</div>
               </div>
 
               {/* Owner Details */}
@@ -1267,6 +1310,35 @@ export default function App() {
                     }}
                   />
                 </div>
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  marginBottom: '6px',
+                  color: isDarkMode ? '#ccc' : '#333'
+                }}>
+                  Society Name *
+                </label>
+                <input
+                  type="text"
+                  name="society_name"
+                  placeholder="e.g., Blue Ridge"
+                  value={formData.society_name}
+                  onChange={handleFormChange}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: `1px solid ${isDarkMode ? '#444' : '#ddd'}`,
+                    borderRadius: '8px',
+                    backgroundColor: isDarkMode ? '#222' : '#f9f9f9',
+                    color: isDarkMode ? '#ffffff' : '#111111',
+                    fontSize: '14px',
+                    boxSizing: 'border-box'
+                  }}
+                />
               </div>
 
               <div>
