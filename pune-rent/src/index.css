@@ -44,6 +44,128 @@ body {
   pointer-events: none;
 }
 
+
+.welcome-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 6, 8, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 1500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.welcome-modal {
+  width: min(420px, 92vw);
+  padding: 20px 22px 18px;
+  border-radius: 18px;
+  background: var(--panel-bg);
+  color: var(--panel-text);
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--panel-shadow);
+  display: grid;
+  gap: 12px;
+  position: relative;
+}
+
+.welcome-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  border: none;
+  background: transparent;
+  color: var(--panel-muted-text);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.welcome-eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--panel-muted-text);
+  font-weight: 600;
+}
+
+.welcome-title {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.welcome-body {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--panel-muted-text);
+}
+
+
+.welcome-badges {
+  display: grid;
+  gap: 8px;
+}
+
+.welcome-badge {
+  background: var(--panel-bg-subtle);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--panel-muted-text);
+}
+
+.welcome-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.welcome-primary,
+.welcome-secondary,
+.welcome-share {
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  font-size: 14px;
+  width: 100%;
+}
+
+.welcome-primary {
+  background: #f59e0b;
+  color: #111111;
+  border-color: #f59e0b;
+  box-shadow: 0 8px 18px rgba(245, 158, 11, 0.25);
+}
+
+.welcome-primary:hover {
+  filter: brightness(0.96);
+}
+
+.welcome-share {
+  background: #1f2f2a;
+  color: #e5f5ef;
+  border-color: #1f2f2a;
+}
+
+.welcome-share:hover {
+  filter: brightness(1.06);
+}
+
+.welcome-secondary {
+  background: transparent;
+  color: var(--panel-text);
+  border-color: var(--panel-border);
+}
+
+.welcome-secondary:hover {
+  background: var(--panel-hover-bg);
+}
+
 .top-controls > * {
   pointer-events: auto;
 }
@@ -256,6 +378,19 @@ body {
   .pill-button {
     padding: 6px 10px;
     font-size: 12px;
+  }
+
+  .welcome-title {
+    font-size: 18px;
+  }
+
+  .welcome-actions {
+    width: 100%;
+  }
+
+  .welcome-primary,
+  .welcome-secondary {
+    flex: 1 1 100%;
   }
 
   .map-style-select {

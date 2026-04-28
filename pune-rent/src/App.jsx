@@ -386,6 +386,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showWelcome, setShowWelcome] = useState(true);
 
   // Format currency to Cr/Lakh format
   const formatCurrency = (amount) => {
@@ -437,6 +438,22 @@ export default function App() {
 
     fetchProperties();
   }, []);
+
+  const dismissWelcome = () => {
+    setShowWelcome(false);
+  };
+
+  const handleWelcomeAddRent = () => {
+    setSelectedCoords([18.5280, 73.8560]);
+    setShowAddModal(true);
+    dismissWelcome();
+  };
+
+  const handleWelcomeShare = () => {
+    const shareText = encodeURIComponent('Check out Pune rents on this community map.');
+    const shareUrl = encodeURIComponent(window.location.href);
+    window.open(`https://wa.me/?text=${shareText}%20${shareUrl}`, '_blank', 'noopener,noreferrer');
+  };
 
   // Handle map click to add new property
   const handleMapClick = (e) => {
@@ -725,6 +742,39 @@ export default function App() {
         </div>
       )}
       </div>
+
+      {showWelcome && (
+        <div className="welcome-overlay" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+          <div className="welcome-modal">
+            <button className="welcome-close" onClick={dismissWelcome} aria-label="Close welcome message">
+              ✕
+            </button>
+            <div className="welcome-eyebrow">Pune rent signal</div>
+            <h2 className="welcome-title" id="welcome-title">
+              Find a fair rent before you sign.
+            </h2>
+            <p className="welcome-body">
+              This map is powered by local submissions, not listing hype. Explore the pins to see real rent patterns, and
+              add your rent if you want to strengthen the signal.
+            </p>
+            <div className="welcome-badges">
+              <div className="welcome-badge">🧭 Tap a pin to see rent, area, and configuration.</div>
+              <div className="welcome-badge">🕶️ Anonymous by default. No login needed.</div>
+            </div>
+            <div className="welcome-actions">
+              <button className="welcome-primary" onClick={handleWelcomeAddRent}>
+                Add your rent
+              </button>
+              <button className="welcome-share" onClick={handleWelcomeShare}>
+                Send on WhatsApp
+              </button>
+              <button className="welcome-secondary" onClick={dismissWelcome}>
+                Continue to map
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MAP COMPONENT */}
       <MapContainer 
