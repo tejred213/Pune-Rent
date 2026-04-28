@@ -168,7 +168,7 @@ body {
   border: 1px solid var(--panel-border);
   box-shadow: var(--panel-shadow-soft);
   white-space: nowrap;
-  justify-self: end;
+  align-self: center;
 }
 
 .floating-actions {
