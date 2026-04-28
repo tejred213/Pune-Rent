@@ -597,49 +597,40 @@ export default function App() {
   };
 
   return (
-    <div style={{ height: '100vh', width: '100vw', position: 'relative' }}>
-      
-      {/* FLOATING HEADER */}
-      <div style={{
-        position: 'absolute',
-        top: '20px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 1000, 
-        backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
-        color: isDarkMode ? '#ffffff' : '#111111',
-        padding: '12px 24px',
-        borderRadius: '30px',
-        boxShadow: isDarkMode ? '0 6px 20px rgba(0,0,0,0.8)' : '0 6px 16px rgba(0,0,0,0.15)',
-        border: `1px solid ${isDarkMode ? '#333' : '#eee'}`,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '20px',
-        fontFamily: 'system-ui, sans-serif',
-        transition: 'all 0.3s ease'
-      }}>
+    <div
+      className="app-shell"
+      style={{
+        '--panel-bg': isDarkMode ? '#1a1a1a' : '#ffffff',
+        '--panel-text': isDarkMode ? '#ffffff' : '#111111',
+        '--panel-border': isDarkMode ? '#333' : '#e5e5e5',
+        '--panel-shadow': isDarkMode ? '0 6px 20px rgba(0,0,0,0.8)' : '0 6px 16px rgba(0,0,0,0.15)',
+        '--panel-shadow-soft': isDarkMode ? '0 4px 12px rgba(0,0,0,0.8)' : '0 4px 12px rgba(0,0,0,0.1)',
+        '--panel-bg-subtle': isDarkMode ? '#222' : '#f9f9f9',
+        '--panel-hover-bg': isDarkMode ? '#333' : '#f0f0f0',
+        '--panel-muted-text': isDarkMode ? '#ccc' : '#666666',
+        '--divider-color': isDarkMode ? '#333' : '#e5e5e5'
+      }}
+    >
+      <div className="top-controls">
+        {/* FLOATING HEADER */}
+        <div className="floating-header">
         <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '800', letterSpacing: '-0.5px' }}>
           punerent.in
         </h1>
 
-        <div style={{ width: '1px', height: '24px', background: isDarkMode ? '#333' : '#e5e5e5' }} />
+        <div className="header-divider" />
 
         {/* Filters */}
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div className="filter-row">
           {['All', '1 BHK', '2 BHK', '3 BHK'].map(filter => (
             <button
               key={filter}
               onClick={() => setActiveFilter(filter)}
+              className="pill-button filter-button"
               style={{
                 background: activeFilter === filter ? (isDarkMode ? '#ffffff' : '#111111') : 'transparent',
                 color: activeFilter === filter ? (isDarkMode ? '#000000' : '#ffffff') : (isDarkMode ? '#a3a3a3' : '#666666'),
-                border: `1px solid ${activeFilter === filter ? 'transparent' : (isDarkMode ? '#444' : '#e5e5e5')}`,
-                padding: '6px 14px',
-                borderRadius: '20px',
-                cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '13px',
-                transition: 'all 0.2s ease'
+                border: `1px solid ${activeFilter === filter ? 'transparent' : (isDarkMode ? '#444' : '#e5e5e5')}`
               }}
             >
               {filter}
@@ -647,45 +638,32 @@ export default function App() {
           ))}
         </div>
 
-        <div style={{ width: '1px', height: '24px', background: isDarkMode ? '#333' : '#e5e5e5' }} />
+        <div className="header-divider" />
 
         {/* Metro Toggle */}
         <button
           onClick={() => setShowMetro(!showMetro)}
+          className="pill-button toggle-button"
           style={{
             background: showMetro ? '#e0e7ff' : 'transparent',
             color: showMetro ? '#3730a3' : (isDarkMode ? '#a3a3a3' : '#666666'),
-            border: `1px solid ${showMetro ? '#c7d2fe' : (isDarkMode ? '#444' : '#e5e5e5')}`,
-            padding: '6px 14px',
-            borderRadius: '20px',
-            cursor: 'pointer',
-            fontWeight: '600',
-            fontSize: '13px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            transition: 'all 0.2s ease'
+            border: `1px solid ${showMetro ? '#c7d2fe' : (isDarkMode ? '#444' : '#e5e5e5')}`
           }}
         >
           🚇 Metro
         </button>
 
-        <div style={{ width: '1px', height: '24px', background: isDarkMode ? '#333' : '#e5e5e5' }} />
+        <div className="header-divider" />
 
         {/* Map Style Selector */}
         <select
           value={mapStyle}
           onChange={(e) => setMapStyle(e.target.value)}
+          className="map-style-select"
           style={{
             background: isDarkMode ? '#222' : '#f5f5f5',
             color: isDarkMode ? '#ffffff' : '#111111',
-            border: `1px solid ${isDarkMode ? '#444' : '#e5e5e5'}`,
-            padding: '6px 12px',
-            borderRadius: '20px',
-            cursor: 'pointer',
-            fontWeight: '600',
-            fontSize: '13px',
-            transition: 'all 0.2s ease'
+            border: `1px solid ${isDarkMode ? '#444' : '#e5e5e5'}`
           }}
         >
           <option value="streets">🗺️ Streets</option>
@@ -695,22 +673,16 @@ export default function App() {
           <option value="satellite">🛰️ Satellite</option>
         </select>
 
-        <div style={{ width: '1px', height: '24px', background: isDarkMode ? '#333' : '#e5e5e5' }} />
+        <div className="header-divider" />
 
         {/* Theme Toggle */}
         <button 
           onClick={() => setIsDarkMode(!isDarkMode)}
+          className="theme-toggle"
           style={{
             background: isDarkMode ? '#333' : '#f5f5f5',
             border: 'none',
-            fontSize: '16px',
-            cursor: 'pointer',
-            padding: '8px',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'background-color 0.2s ease'
+            fontSize: '16px'
           }}
           title="Toggle Theme"
         >
@@ -719,71 +691,24 @@ export default function App() {
       </div>
 
       {/* SEARCH BOX */}
-      <div style={{
-        position: 'absolute',
-        top: '100px',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 999,
-        width: '90%',
-        maxWidth: '500px'
-      }}>
-        <div style={{
-          position: 'relative',
-          backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
-          borderRadius: '12px',
-          boxShadow: isDarkMode ? '0 4px 12px rgba(0, 0, 0, 0.8)' : '0 4px 12px rgba(0,0,0,0.1)',
-          border: `1px solid ${isDarkMode ? '#333' : '#e5e5e5'}`,
-          overflow: 'hidden'
-        }}>
+      <div className="search-wrap">
+        <div className="search-panel">
           <input
             type="text"
             placeholder="🔍 Search areas... (e.g., Koregaon Park, Pimpri)"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: 'none',
-              backgroundColor: 'transparent',
-              color: isDarkMode ? '#ffffff' : '#111111',
-              fontSize: '14px',
-              fontFamily: 'system-ui, sans-serif',
-              outline: 'none'
-            }}
+            className="search-input"
           />
           
           {/* Autocomplete Dropdown */}
           {searchQuery && filteredAreas.length > 0 && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              right: 0,
-              backgroundColor: isDarkMode ? '#222' : '#f9f9f9',
-              borderTop: `1px solid ${isDarkMode ? '#333' : '#e5e5e5'}`,
-              maxHeight: '200px',
-              overflowY: 'auto'
-            }}>
+            <div className="search-dropdown">
               {filteredAreas.map((area, idx) => (
                 <div
                   key={idx}
                   onClick={() => setSearchQuery(area)}
-                  style={{
-                    padding: '10px 16px',
-                    cursor: 'pointer',
-                    borderBottom: `1px solid ${isDarkMode ? '#333' : '#e5e5e5'}`,
-                    color: isDarkMode ? '#ffffff' : '#111111',
-                    backgroundColor: isDarkMode ? '#222' : '#f9f9f9',
-                    transition: 'background-color 0.2s ease',
-                    fontSize: '13px'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = isDarkMode ? '#333' : '#f0f0f0';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = isDarkMode ? '#222' : '#f9f9f9';
-                  }}
+                  className="search-item"
                 >
                   📍 {area}
                 </div>
@@ -795,25 +720,11 @@ export default function App() {
 
       {/* STATS DISPLAY */}
       {filteredProperties.length > 0 && (
-        <div style={{
-          position: 'absolute',
-          top: '142px',
-          left: '720px',
-          backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
-          borderRadius: '12px',
-          boxShadow: isDarkMode ? '0 4px 12px rgba(0, 0, 0, 0.8)' : '0 4px 12px rgba(0,0,0,0.1)',
-          border: `1px solid ${isDarkMode ? '#333' : '#e5e5e5'}`,
-          padding: '9px 16px',
-          fontSize: '14px',
-          fontWeight: '500',
-          color: isDarkMode ? '#ffffff' : '#111111',
-          zIndex: 1000,
-          fontFamily: 'system-ui, sans-serif',
-          whiteSpace: 'nowrap'
-        }}>
+        <div className="stats-pill">
           📍 {totalPins} {totalPins === 1 ? 'pin' : 'pins'} · {formatCurrency(totalAnnualRent)} in rent / yr
         </div>
       )}
+      </div>
 
       {/* MAP COMPONENT */}
       <MapContainer 
@@ -884,16 +795,7 @@ export default function App() {
       </MapContainer>
 
       {/* FLOATING INFO - Click to Add Property */}
-      <div style={{
-        position: 'absolute',
-        bottom: '30px',
-        right: '30px',
-        zIndex: 1001,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'flex-end',
-        gap: '12px'
-      }}>
+      <div className="floating-actions">
         <button
           onClick={() => {
             // Show a center-of-map add form
@@ -904,21 +806,7 @@ export default function App() {
             }
           }}
           title="Add property at center"
-          style={{
-            width: '60px',
-            height: '60px',
-            borderRadius: '50%',
-            backgroundColor: '#3b82f6',
-            color: '#ffffff',
-            border: 'none',
-            fontSize: '28px',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
-            transition: 'all 0.3s ease',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
+          className="fab-button"
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'scale(1.1)';
             e.currentTarget.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.6)';
@@ -930,17 +818,7 @@ export default function App() {
         >
           ➕
         </button>
-        <div style={{
-          backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
-          color: isDarkMode ? '#ccc' : '#666',
-          padding: '8px 12px',
-          borderRadius: '8px',
-          fontSize: '12px',
-          border: `1px solid ${isDarkMode ? '#333' : '#ddd'}`,
-          boxShadow: isDarkMode ? '0 2px 8px rgba(0,0,0,0.4)' : '0 2px 8px rgba(0,0,0,0.1)',
-          maxWidth: '200px',
-          textAlign: 'center'
-        }}>
+        <div className="fab-hint">
           💡 Click anywhere on the map to add a flat listing
         </div>
       </div>
@@ -1188,7 +1066,9 @@ export default function App() {
             maxWidth: '500px',
             width: '90%',
             boxShadow: isDarkMode ? '0 10px 40px rgba(0,0,0,0.8)' : '0 10px 40px rgba(0,0,0,0.2)',
-            border: `1px solid ${isDarkMode ? '#333' : '#e5e5e5'}`
+            border: `1px solid ${isDarkMode ? '#333' : '#e5e5e5'}`,
+            maxHeight: '85vh',
+            overflowY: 'auto'
           }}>
             <div style={{
               display: 'flex',
@@ -1249,7 +1129,7 @@ export default function App() {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="form-grid">
                 <div>
                   <label style={{
                     display: 'block',
@@ -1424,19 +1304,14 @@ export default function App() {
                     color: isDarkMode ? '#ffffff' : '#111111',
                     fontSize: '14px',
                     boxSizing: 'border-box',
-                    fontFamily: 'system-ui, sans-serif',
+                    fontFamily: 'inherit',
                     resize: 'vertical'
                   }}
                 />
               </div>
 
               {/* Action Buttons */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '12px',
-                marginTop: '20px'
-              }}>
+              <div className="form-actions">
                 <button
                   onClick={() => setShowAddModal(false)}
                   style={{
