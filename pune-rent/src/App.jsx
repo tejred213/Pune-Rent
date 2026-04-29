@@ -302,6 +302,50 @@ const createClusterCustomIcon = (cluster, isDarkMode) => {
   });
 };
 
+// Geocode building name + area using Google Geocoding API
+const geocodeBuilding = async (buildingName, areaName) => {
+  if (!buildingName.trim() || !areaName.trim()) {
+    return null;
+  }
+  
+  const googleApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  if (!googleApiKey) {
+    console.warn('Google Maps API key not configured');
+    return null;
+  }
+  
+  try {
+    // Construct search query: "Building Name, Area, Pune, India"
+    const query = `${buildingName}, ${areaName}, Pune, India`;
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${googleApiKey}`,
+      { method: 'GET' }
+    );
+    
+    if (!response.ok) {
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    // Check if Google returned valid results
+    if (data.status === 'OK' && data.results.length > 0) {
+      const { lat, lng } = data.results[0].geometry.location;
+      return [lat, lng];
+    }
+    
+    // Return null if no results or API returned an error
+    if (data.status !== 'OK') {
+      console.warn(`Geocoding API returned status: ${data.status}`);
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Geocoding error:', error);
+    return null;
+  }
+};
+
 // Component to handle zooming to searched area
 function AreaZoomHandler({ areaBounds }) {
   const map = useMap();
@@ -416,6 +460,10 @@ export default function App() {
   // State for viewing property details
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState(null);
+  
+  // State for auto-geocoding
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [geocodingStatus, setGeocodingStatus] = useState('');
 
   // Fetch properties from backend
   useEffect(() => {
@@ -438,6 +486,35 @@ export default function App() {
 
     fetchProperties();
   }, []);
+
+  // Auto-geocode when both area and society_name are provided
+  useEffect(() => {
+    const performGeocoding = async () => {
+      if (formData.area && formData.society_name && showAddModal) {
+        setIsGeocoding(true);
+        setGeocodingStatus('Looking up location...');
+        
+        const coords = await geocodeBuilding(formData.society_name, formData.area);
+        
+        if (coords) {
+          setSelectedCoords(coords);
+          setGeocodingStatus('✓ Location found and pin placed');
+          // Clear status after 2 seconds
+          setTimeout(() => setGeocodingStatus(''), 2000);
+        } else {
+          setGeocodingStatus('Could not find location. Pin stays at clicked position.');
+          // Clear status after 3 seconds
+          setTimeout(() => setGeocodingStatus(''), 3000);
+        }
+        
+        setIsGeocoding(false);
+      }
+    };
+
+    // Debounce the geocoding call
+    const timer = setTimeout(performGeocoding, 800);
+    return () => clearTimeout(timer);
+  }, [formData.area, formData.society_name, showAddModal]);
 
   const dismissWelcome = () => {
     setShowWelcome(false);
@@ -1269,6 +1346,21 @@ export default function App() {
                     boxSizing: 'border-box'
                   }}
                 />
+                
+                {/* Geocoding Status */}
+                {geocodingStatus && (
+                  <div style={{
+                    marginTop: '8px',
+                    padding: '8px 12px',
+                    backgroundColor: geocodingStatus.startsWith('✓') ? '#d1fae5' : '#fef3c7',
+                    color: geocodingStatus.startsWith('✓') ? '#065f46' : '#92400e',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: '500'
+                  }}>
+                    {geocodingStatus}
+                  </div>
+                )}
               </div>
 
               <div>
