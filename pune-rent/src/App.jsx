@@ -346,6 +346,8 @@ const geocodeBuilding = async (buildingName, areaName) => {
   }
 };
 
+// test changes
+
 // Component to handle zooming to searched area
 function AreaZoomHandler({ areaBounds }) {
   const map = useMap();
