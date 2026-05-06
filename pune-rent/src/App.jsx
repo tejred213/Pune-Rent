@@ -1,9 +1,6 @@
 import * as React from 'react';
-import { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, Circle, useMap } from 'react-leaflet';
-import MarkerClusterGroup from 'react-leaflet-cluster';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { GoogleMap, useJsApiLoader, Marker, MarkerClusterer, InfoWindow } from '@react-google-maps/api';
 
 // API BASE URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
@@ -252,53 +249,75 @@ const aquaLinePath = [
   [18.507104129651097, 73.80232931175351]
 ];
 
-// Individual Property Marker
-const createCustomIcon = (prop, isDarkMode) => {
-  const themeClass = isDarkMode ? 'theme-dark' : 'theme-light';
-  const flagHtml = prop.flag 
-    ? `<span class="flag-badge">${prop.flag}</span>` 
-    : '';
+// Create custom marker icon SVG for Google Maps
+const createMarkerIcon = (prop, isDarkMode) => {
+  const bgColor = isDarkMode ? '#121212' : '#ffffff';
+  const textColor = isDarkMode ? '#ffffff' : '#111111';
+  const borderColor = isDarkMode ? '#333333' : '#e5e7eb';
+  const label = `${prop.config} | ${prop.price}${prop.flag ? ` ${prop.flag}` : ''}`;
+  const charWidth = 7.1;
+  const minWidth = 94;
+  const maxWidth = 168;
+  const width = Math.min(maxWidth, Math.max(minWidth, Math.round(label.length * charWidth + 28)));
+  const height = 40;
+  const radius = Math.round((height - 6) / 2);
 
-  return L.divIcon({
-    className: '', 
-    html: `
-      <div class="${themeClass}">
-        <div class="custom-price-tag">
-          ${prop.config} <span class="price-divider">|</span> ${prop.price} ${flagHtml}
-        </div>
-      </div>
-    `,
-    iconSize: null, 
-    iconAnchor: [45, 20] 
-  });
+  const svgString = encodeURIComponent(`
+    <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.18" flood-color="#000000"/>
+        </filter>
+      </defs>
+      <rect x="3" y="3" width="${width - 6}" height="${height - 6}" rx="${radius}" ry="${radius}" fill="${bgColor}" stroke="${borderColor}" stroke-width="1" filter="url(#shadow)"/>
+      <text x="${Math.round(width / 2)}" y="${Math.round(height / 2) + 1}" text-anchor="middle" dominant-baseline="middle" font-family="'Space Grotesk', sans-serif" font-size="13" font-weight="700" fill="${textColor}">${label}</text>
+    </svg>
+  `);
+
+  return {
+    url: `data:image/svg+xml;charset=utf-8,${svgString}`,
+    width,
+    height
+  };
 };
 
-// Custom Cluster Bubble
-const createClusterCustomIcon = (cluster, isDarkMode) => {
-  const count = cluster.getChildCount();
-  const themeClass = isDarkMode ? 'theme-dark' : 'theme-light';
-  
-  let size = 45; 
-  if (count > 5) size = 55;
-  if (count > 20) size = 65;
+// Create cluster marker icon background (text is rendered by clusterer)
+const createClusterIcon = (size, isDarkMode = false) => {
+  const bgColor = isDarkMode ? '#000000' : '#ffffff';
+  const borderColor = isDarkMode ? 'rgba(100, 116, 139, 0.4)' : 'rgba(15, 23, 42, 0.15)';
 
-  return L.divIcon({
-    className: '', 
-    html: `
-      <div class="${themeClass}" style="width: ${size}px; height: ${size}px;">
-        <div class="custom-price-tag" style="
-          width: 100%; 
-          height: 100%; 
-          border-radius: 50%; 
-          padding: 0; 
-          font-size: ${size > 45 ? '16px' : '14px'};
-        ">
-          ${count}
-        </div>
-      </div>
-    `,
-    iconSize: L.point(size, size, true), 
-    iconAnchor: [size / 2, size / 2] 
+  const svgString = encodeURIComponent(`
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.2" flood-color="#000000"/>
+        </filter>
+      </defs>
+      <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 3}" fill="${bgColor}" stroke="${borderColor}" stroke-width="1" filter="url(#shadow)"/>
+    </svg>
+  `);
+
+  return {
+    url: `data:image/svg+xml;charset=utf-8,${svgString}`,
+    size
+  };
+};
+
+const buildClusterStyles = (isDarkMode = false) => {
+  const sizes = [44, 54, 64];
+  return sizes.map((size) => {
+    const icon = createClusterIcon(size, isDarkMode);
+    const textSize = size >= 64 ? 16 : size >= 54 ? 15 : 14;
+    return {
+      url: icon.url,
+      height: icon.size,
+      width: icon.size,
+      textColor: isDarkMode ? '#f1f5f9' : '#111111',
+      textSize,
+      textLineHeight: icon.size,
+      fontFamily: "'Space Grotesk', sans-serif",
+      fontWeight: '700'
+    };
   });
 };
 
@@ -348,91 +367,21 @@ const geocodeBuilding = async (buildingName, areaName) => {
 
 // test changes
 
-// Component to handle zooming to searched area
-function AreaZoomHandler({ areaBounds }) {
-  const map = useMap();
-  
-  useEffect(() => {
-    if (areaBounds && map) {
-      if (areaBounds.bounds) {
-        // Use bounds if available (property-based calculation)
-        map.fitBounds(areaBounds.bounds, { padding: [50, 50], maxZoom: 15 });
-      } else if (areaBounds.center && areaBounds.radius) {
-        // Calculate bounds from circle center and radius
-        const R = 6371000; // Earth's radius in meters
-        const lat = areaBounds.center[0];
-        const lng = areaBounds.center[1];
-        const radius = areaBounds.radius;
-        
-        // Calculate approximate bounds (1 degree ~ 111km)
-        const latOffset = (radius / 111000);
-        const lngOffset = (radius / (111000 * Math.cos(lat * Math.PI / 180)));
-        
-        const bounds = [
-          [lat - latOffset, lng - lngOffset],
-          [lat + latOffset, lng + lngOffset]
-        ];
-        
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
-      }
-    }
-  }, [areaBounds, map]);
-  
-  return null;
-}
 
-// Component to handle map click events
-function MapClickHandler({ onMapClick }) {
-  useMapEvents({
-    click(e) {
-      onMapClick(e);
-    },
-  });
-  return null;
-}
-
-function PropertyClusterLayer({ properties, isDarkMode, onSelectProperty }) {
-  const map = useMap();
-
-  const handleClusterClick = (event) => {
-    const bounds = event?.layer?.getBounds?.();
-    if (!bounds || !bounds.isValid()) return;
-    map.flyToBounds(bounds, { padding: [40, 40], maxZoom: 17, duration: 0.6 });
-  };
-
-  return (
-    <MarkerClusterGroup 
-      key={`cluster-group-${isDarkMode}`} 
-      chunkedLoading 
-      maxClusterRadius={60}
-      iconCreateFunction={(cluster) => createClusterCustomIcon(cluster, isDarkMode)}
-      eventHandlers={{ clusterclick: handleClusterClick }}
-    >
-      {properties.map((prop) => (
-        <Marker 
-          key={`${prop.id}-${isDarkMode}`} 
-          position={[prop.lat, prop.lng]} 
-          icon={createCustomIcon(prop, isDarkMode)}
-          eventHandlers={{
-            click: () => {
-              onSelectProperty(prop);
-            }
-          }}
-        />
-      ))}
-    </MarkerClusterGroup>
-  );
-}
 
 export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [activeFilter, setActiveFilter] = useState('All');
   const [showMetro, setShowMetro] = useState(true);
-  const [mapStyle, setMapStyle] = useState('streets');
+  const [mapStyle, setMapStyle] = useState('light');
   const [searchQuery, setSearchQuery] = useState('');
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showWelcome, setShowWelcome] = useState(true);
+  const [isMapReady, setIsMapReady] = useState(false);
+  const [metroStationsSource, setMetroStationsSource] = useState(null);
+  const [resolvedMetroStations, setResolvedMetroStations] = useState(null);
+  const [hoveredStation, setHoveredStation] = useState(null);
 
   // Format currency to Cr/Lakh format
   const formatCurrency = (amount) => {
@@ -467,6 +416,10 @@ export default function App() {
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodingStatus, setGeocodingStatus] = useState('');
 
+  const ownerName = selectedProperty?.owner_name?.toString().trim();
+  const ownerPhone = selectedProperty?.owner_phone?.toString().trim();
+  const hasOwnerDetails = Boolean(ownerName || ownerPhone);
+
   // Fetch properties from backend
   useEffect(() => {
     const fetchProperties = async () => {
@@ -487,6 +440,34 @@ export default function App() {
     };
 
     fetchProperties();
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadStationData = async () => {
+      try {
+        const response = await fetch('/StationNodes.json', { cache: 'no-store' });
+        if (!response.ok) {
+          throw new Error(`StationNodes.json fetch failed: ${response.status}`);
+        }
+        const data = await response.json();
+        if (isActive) {
+          setMetroStationsSource(data);
+        }
+      } catch (error) {
+        console.error('Failed to load StationNodes.json', error);
+        if (isActive) {
+          setMetroStationsSource(null);
+        }
+      }
+    };
+
+    loadStationData();
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
   // Auto-geocode when both area and society_name are provided
@@ -532,13 +513,6 @@ export default function App() {
     const shareText = encodeURIComponent('Check out Pune rents on this community map.');
     const shareUrl = encodeURIComponent(window.location.href);
     window.open(`https://wa.me/?text=${shareText}%20${shareUrl}`, '_blank', 'noopener,noreferrer');
-  };
-
-  // Handle map click to add new property
-  const handleMapClick = (e) => {
-    const coords = [e.latlng.lat, e.latlng.lng];
-    setSelectedCoords(coords);
-    setShowAddModal(true);
   };
 
   // Handle form input changes
@@ -603,16 +577,27 @@ export default function App() {
   };
 
   // Get unique areas for autocomplete
-  const uniqueAreas = [...new Set(properties.map(p => p.area))];
-  const filteredAreas = searchQuery 
-    ? uniqueAreas.filter(area => area.toLowerCase().includes(searchQuery.toLowerCase()))
-    : [];
+  const uniqueAreas = useMemo(
+    () => [...new Set(properties.map(p => p.area))],
+    [properties]
+  );
+  const filteredAreas = useMemo(
+    () => (searchQuery
+      ? uniqueAreas.filter(area => area.toLowerCase().includes(searchQuery.toLowerCase()))
+      : []
+    ),
+    [searchQuery, uniqueAreas]
+  );
 
-  const filteredProperties = properties.filter(prop => {
-    const matchesFilter = activeFilter === 'All' ? true : prop.config.includes(activeFilter);
-    const matchesSearch = searchQuery === '' ? true : prop.area.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
+  const normalizedSearchQuery = searchQuery.trim();
+
+  const filteredProperties = useMemo(() => (
+    properties.filter(prop => {
+      const matchesFilter = activeFilter === 'All' ? true : prop.config.includes(activeFilter);
+      const matchesSearch = normalizedSearchQuery === '' ? true : prop.area.toLowerCase().includes(normalizedSearchQuery.toLowerCase());
+      return matchesFilter && matchesSearch;
+    })
+  ), [properties, activeFilter, normalizedSearchQuery]);
 
   // Calculate stats
   const totalPins = filteredProperties.length;
@@ -623,10 +608,10 @@ export default function App() {
 
   // Calculate bounds for the searched area to highlight it
   const getAreaBounds = () => {
-    if (!searchQuery) return null;
+    if (!normalizedSearchQuery) return null;
     
     // First, try to find the area in AREA_COORDINATES (predefined mapping)
-    const searchQueryLower = searchQuery.toLowerCase();
+    const searchQueryLower = normalizedSearchQuery.toLowerCase();
     const foundArea = Object.entries(AREA_COORDINATES).find(([key]) => 
       key.includes(searchQueryLower) || searchQueryLower.includes(key)
     );
@@ -674,22 +659,356 @@ export default function App() {
     };
   };
 
-  const areaBounds = getAreaBounds();
+  const areaBounds = useMemo(() => getAreaBounds(), [normalizedSearchQuery, filteredProperties, properties]);
 
-  // Get Stadia Maps API key from environment
-  const stadiaApiKey = import.meta.env.VITE_STADIA_MAPS_API_KEY || '';
+  // Get Google Maps API key from environment
+  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
 
-  // Map provider URLs - Stadia Maps requires API key for authentication
-  const mapProviders = {
-    streets: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    dark: stadiaApiKey 
-      ? `https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}.png?api_key=${stadiaApiKey}`
-      : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', // Fallback to OSM if no API key
-    light: stadiaApiKey
-      ? `https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}.png?api_key=${stadiaApiKey}`
-      : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', // Fallback to OSM if no API key
-    topo: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-    satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  // Load Google Maps API
+  const { isLoaded } = useJsApiLoader({
+    googleMapsApiKey: googleMapsApiKey,
+    libraries: ['marker', 'places']
+  });
+
+  const maxZoomLevel = 20;
+  const initialCenter = { lat: 18.5280, lng: 73.8560 };
+  const initialZoom = 12;
+
+  const darkMapStyles = [
+    { elementType: 'geometry', stylers: [{ color: '#242f3e' }] },
+    { elementType: 'labels.text.stroke', stylers: [{ color: '#242f3e' }] },
+    { elementType: 'labels.text.fill', stylers: [{ color: '#746855' }] },
+    { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
+    { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
+    { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#263c3f' }] },
+    { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#6b9080' }] },
+    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#38414e' }] },
+    { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#212a37' }] },
+    { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#9ca5b3' }] },
+    { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#746855' }] },
+    { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#1f2835' }] },
+    { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#f3751b' }] },
+    { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#2f3948' }] },
+    { featureType: 'transit.line', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
+    { featureType: 'transit.station', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
+    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#17263c' }] },
+    { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#515c6d' }] }
+  ];
+
+  const useDarkMapStyles = mapStyle === 'dark';
+  const mapStyles = useDarkMapStyles ? darkMapStyles : null;
+
+  const purpleLineLatLng = useMemo(
+    () => purpleLinePath.map(([lat, lng]) => ({ lat, lng })),
+    []
+  );
+  const aquaLineLatLng = useMemo(
+    () => aquaLinePath.map(([lat, lng]) => ({ lat, lng })),
+    []
+  );
+
+  const fallbackMetroStations = useMemo(() => {
+    const buildStations = (lineKey, stations) => (stations || []).map((station, index) => ({
+      id: `${lineKey}-${index}`,
+      name: station.english || 'Metro Station',
+      name_hi: station.hindi,
+      name_mr: station.marathi,
+      position: {
+        lat: station.coordinates.latitude,
+        lng: station.coordinates.longitude
+      },
+      line: lineKey
+    }));
+
+    return {
+      purple: buildStations('purple', metroStationsSource?.pune_metro?.purple_line),
+      aqua: buildStations('aqua', metroStationsSource?.pune_metro?.aqua_line)
+    };
+  }, [metroStationsSource]);
+
+  const metroStations = resolvedMetroStations ?? fallbackMetroStations;
+
+  const stationIcons = useMemo(() => {
+    if (!isLoaded || !window.google?.maps) return null;
+    const base = {
+      path: window.google.maps.SymbolPath.CIRCLE,
+      scale: 6.5,
+      fillOpacity: 1,
+      strokeColor: '#ffffff',
+      strokeWeight: 1
+    };
+    return {
+      purple: { ...base, fillColor: '#7e22ce' },
+      aqua: { ...base, fillColor: '#0891b2' }
+    };
+  }, [isLoaded]);
+
+  // Map options for Google Maps
+  const mapOptions = {
+    minZoom: 11,
+    maxZoom: maxZoomLevel,
+    mapTypeId: mapStyle === 'satellite' ? 'satellite' : mapStyle === 'topo' ? 'terrain' : 'roadmap',
+    restriction: {
+      latLngBounds: {
+        north: 18.75,
+        south: 18.35,
+        east: 74.1,
+        west: 73.6
+      }
+    },
+    disableDefaultUI: true,
+    zoomControl: false,
+    fullscreenControl: false,
+    mapTypeControl: false,
+    streetViewControl: false,
+    styles: mapStyles
+  };
+
+  const mapRef = useRef(null);
+  const metroLinesRef = useRef([]);
+  const lastSearchQueryRef = useRef('');
+  const areaCircleRef = useRef(null);
+
+  // Handle area zoom when search query changes
+  useEffect(() => {
+    if (!isLoaded || !mapRef.current) return;
+    if (normalizedSearchQuery === lastSearchQueryRef.current) return;
+    lastSearchQueryRef.current = normalizedSearchQuery;
+    if (!areaBounds) return;
+
+    const bounds = new window.google.maps.LatLngBounds();
+
+    if (areaBounds.bounds) {
+      bounds.extend(new window.google.maps.LatLng(areaBounds.bounds[0][0], areaBounds.bounds[0][1]));
+      bounds.extend(new window.google.maps.LatLng(areaBounds.bounds[1][0], areaBounds.bounds[1][1]));
+      mapRef.current.fitBounds(bounds);
+      return;
+    }
+
+    if (areaBounds.center && areaBounds.radius) {
+      const lat = areaBounds.center[0];
+      const lng = areaBounds.center[1];
+      const radius = areaBounds.radius;
+
+      const latOffset = (radius / 111000);
+      const lngOffset = (radius / (111000 * Math.cos(lat * Math.PI / 180)));
+
+      bounds.extend(new window.google.maps.LatLng(lat - latOffset, lng - lngOffset));
+      bounds.extend(new window.google.maps.LatLng(lat + latOffset, lng + lngOffset));
+      mapRef.current.fitBounds(bounds);
+    }
+  }, [areaBounds, isLoaded, normalizedSearchQuery]);
+
+  useEffect(() => {
+    if (!isLoaded || !mapRef.current) return;
+
+    if (!areaBounds || !normalizedSearchQuery) {
+      if (areaCircleRef.current) {
+        areaCircleRef.current.setMap(null);
+        areaCircleRef.current = null;
+      }
+      return;
+    }
+
+    const circleCenter = { lat: areaBounds.center[0], lng: areaBounds.center[1] };
+    const circleOptions = {
+      strokeColor: isDarkMode ? '#991b1b' : '#22c55e',
+      strokeOpacity: 0.8,
+      strokeWeight: 3,
+      fillColor: isDarkMode ? '#991b1b' : '#22c55e',
+      fillOpacity: 0.25
+    };
+
+    if (!areaCircleRef.current) {
+      areaCircleRef.current = new window.google.maps.Circle({
+        map: mapRef.current,
+        center: circleCenter,
+        radius: areaBounds.radius,
+        ...circleOptions
+      });
+      return;
+    }
+
+    areaCircleRef.current.setOptions(circleOptions);
+    areaCircleRef.current.setCenter(circleCenter);
+    areaCircleRef.current.setRadius(areaBounds.radius);
+    areaCircleRef.current.setMap(mapRef.current);
+  }, [areaBounds, isDarkMode, isLoaded, normalizedSearchQuery]);
+
+  useEffect(() => {
+    if (!isLoaded || !isMapReady || !mapRef.current || !metroStationsSource) return;
+    if (!window.google?.maps?.places) return;
+
+    let isActive = true;
+    const service = new window.google.maps.places.PlacesService(mapRef.current);
+
+    const findStationPlace = (station) => new Promise((resolve) => {
+      const coords = station.coordinates;
+      const query = `${station.english} Metro Station, Pune`;
+      const locationBias = coords ? new window.google.maps.Circle({
+        center: { lat: coords.latitude, lng: coords.longitude },
+        radius: 1500
+      }) : undefined;
+
+      service.findPlaceFromQuery(
+        {
+          query,
+          fields: ['geometry', 'place_id', 'name'],
+          locationBias
+        },
+        (results, status) => {
+          if (status === window.google.maps.places.PlacesServiceStatus.OK && results?.[0]?.geometry?.location) {
+            resolve(results[0]);
+            return;
+          }
+          resolve(null);
+        }
+      );
+    });
+
+    const resolveLineStations = async (lineKey, stations) => {
+      const resolved = [];
+
+      for (const [index, station] of (stations || []).entries()) {
+        // Small delay prevents Places API throttling.
+        // eslint-disable-next-line no-await-in-loop
+        const place = await findStationPlace(station);
+        const location = place?.geometry?.location;
+        const fallbackCoords = station.coordinates;
+
+        resolved.push({
+          id: `${lineKey}-${index}`,
+          name: station.english || 'Metro Station',
+          name_hi: station.hindi,
+          name_mr: station.marathi,
+          position: {
+            lat: location ? location.lat() : fallbackCoords.latitude,
+            lng: location ? location.lng() : fallbackCoords.longitude
+          },
+          line: lineKey,
+          placeId: place?.place_id
+        });
+
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise((resolve) => setTimeout(resolve, 140));
+      }
+
+      return resolved;
+    };
+
+    const resolveStations = async () => {
+      const purple = await resolveLineStations('purple', metroStationsSource?.pune_metro?.purple_line);
+      const aqua = await resolveLineStations('aqua', metroStationsSource?.pune_metro?.aqua_line);
+
+      if (isActive) {
+        setResolvedMetroStations({ purple, aqua });
+      }
+    };
+
+    resolveStations();
+
+    return () => {
+      isActive = false;
+    };
+  }, [isLoaded, isMapReady, metroStationsSource]);
+
+  useEffect(() => {
+    if (!showMetro) {
+      setHoveredStation(null);
+    }
+  }, [showMetro]);
+
+  useEffect(() => {
+    if (!isLoaded || !isMapReady || !mapRef.current) return;
+
+    if (metroLinesRef.current.length === 0) {
+      const buildLine = (path, options) => new window.google.maps.Polyline({
+        path,
+        ...options
+      });
+
+      metroLinesRef.current = [
+        buildLine(purpleLineLatLng, {
+          strokeColor: '#c084fc',
+          strokeOpacity: 0.3,
+          strokeWeight: 14,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }),
+        buildLine(purpleLineLatLng, {
+          strokeColor: '#7e22ce',
+          strokeOpacity: 1.0,
+          strokeWeight: 5,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }),
+        buildLine(aquaLineLatLng, {
+          strokeColor: '#22d3ee',
+          strokeOpacity: 0.3,
+          strokeWeight: 14,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }),
+        buildLine(aquaLineLatLng, {
+          strokeColor: '#0891b2',
+          strokeOpacity: 1.0,
+          strokeWeight: 5,
+          lineCap: 'round',
+          lineJoin: 'round'
+        })
+      ];
+    }
+
+    metroLinesRef.current.forEach((line) => {
+      line.setVisible(showMetro);
+      line.setMap(showMetro ? mapRef.current : null);
+    });
+  }, [aquaLineLatLng, isLoaded, isMapReady, purpleLineLatLng, showMetro]);
+
+  useEffect(() => {
+    return () => {
+      metroLinesRef.current.forEach((line) => line.setMap(null));
+      metroLinesRef.current = [];
+    };
+  }, []);
+
+  // Handle map click to add property
+  const handleMapClick = (e) => {
+    const coords = [e.latLng.lat(), e.latLng.lng()];
+    setSelectedCoords(coords);
+    setShowAddModal(true);
+  };
+
+  const handleClusterClick = useCallback((cluster) => {
+    if (!mapRef.current) return;
+    const center = cluster?.getCenter?.();
+    if (!center) return;
+    const currentZoom = mapRef.current.getZoom() ?? initialZoom;
+    mapRef.current.setCenter(center);
+    mapRef.current.setZoom(Math.min(currentZoom + 2, maxZoomLevel));
+  }, [initialZoom, maxZoomLevel]);
+
+  const handleMapStyleChange = (nextStyle) => {
+    setMapStyle(nextStyle);
+    if (nextStyle === 'dark' && !isDarkMode) {
+      setIsDarkMode(true);
+    }
+    if (nextStyle === 'light' && isDarkMode) {
+      setIsDarkMode(false);
+    }
+  };
+
+  const handleThemeToggle = () => {
+    setIsDarkMode((prev) => {
+      const next = !prev;
+      if (next && mapStyle === 'light') {
+        setMapStyle('dark');
+      }
+      if (!next && mapStyle === 'dark') {
+        setMapStyle('light');
+      }
+      return next;
+    });
   };
 
   return (
@@ -738,7 +1057,7 @@ export default function App() {
 
         {/* Metro Toggle */}
         <button
-          onClick={() => setShowMetro(!showMetro)}
+          onClick={() => setShowMetro((prev) => !prev)}
           className="pill-button toggle-button"
           style={{
             background: showMetro ? '#e0e7ff' : 'transparent',
@@ -754,7 +1073,7 @@ export default function App() {
         {/* Map Style Selector */}
         <select
           value={mapStyle}
-          onChange={(e) => setMapStyle(e.target.value)}
+          onChange={(e) => handleMapStyleChange(e.target.value)}
           className="map-style-select"
           style={{
             background: isDarkMode ? '#222' : '#f5f5f5',
@@ -762,9 +1081,8 @@ export default function App() {
             border: `1px solid ${isDarkMode ? '#444' : '#e5e5e5'}`
           }}
         >
-          <option value="streets">🗺️ Streets</option>
-          <option value="dark">🌑 Dark</option>
           <option value="light">☀️ Light</option>
+          <option value="dark">🌑 Dark</option>
           <option value="topo">🏔️ Topo</option>
           <option value="satellite">🛰️ Satellite</option>
         </select>
@@ -773,7 +1091,7 @@ export default function App() {
 
         {/* Theme Toggle */}
         <button 
-          onClick={() => setIsDarkMode(!isDarkMode)}
+          onClick={handleThemeToggle}
           className="theme-toggle"
           style={{
             background: isDarkMode ? '#333' : '#f5f5f5',
@@ -793,7 +1111,10 @@ export default function App() {
             type="text"
             placeholder="🔍 Search areas... (e.g., Koregaon Park, Pimpri)"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              const nextValue = e.target.value;
+              setSearchQuery(nextValue.trim() === '' ? '' : nextValue);
+            }}
             className="search-input"
           />
           
@@ -856,72 +1177,100 @@ export default function App() {
       )}
 
       {/* MAP COMPONENT */}
-      <MapContainer 
-        center={[18.5280, 73.8560]} 
-        zoom={12} 
-        minZoom={11} 
-        maxBounds={PUNE_BOUNDS} 
-        maxBoundsViscosity={1.0} 
-        style={{ height: '100%', width: '100%', backgroundColor: isDarkMode ? '#1a1a1a' : '#f0f0f0' }}
-        zoomControl={false} 
-      >
-        <TileLayer
-          key={mapStyle}
-          attribution={
-            mapStyle === 'streets' ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' :
-            mapStyle === 'satellite' ? '&copy; Esri' :
-            mapStyle === 'topo' ? '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>' :
-            (mapStyle === 'dark' || mapStyle === 'light') && stadiaApiKey 
-              ? '&copy; <a href="https://stadiamaps.com">Stadia Maps</a> &copy; <a href="https://openmaptiles.org">OpenMapTiles</a>'
-              : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          }
-          url={mapProviders[mapStyle]}
-        />
-
-        {/* METRO LINES OVERLAY */}
-        {showMetro && (
-          <>
-            {/* Purple Line Overlay */}
-            <Polyline positions={purpleLinePath} color="#c084fc" weight={14} opacity={0.3} lineCap="round" lineJoin="round" />
-            <Polyline positions={purpleLinePath} color="#7e22ce" weight={5} opacity={1.0} lineCap="round" lineJoin="round" />
-
-            {/* Aqua Line Overlay */}
-            <Polyline positions={aquaLinePath} color="#22d3ee" weight={14} opacity={0.3} lineCap="round" lineJoin="round" />
-            <Polyline positions={aquaLinePath} color="#0891b2" weight={5} opacity={1.0} lineCap="round" lineJoin="round" />
-          </>
-        )}
-
-        {/* AREA HIGHLIGHT OVERLAY */}
-        {areaBounds && (
-          <Circle
-            center={areaBounds.center}
-            radius={areaBounds.radius}
-            pathOptions={{
-              color: isDarkMode ? '#991b1b' : '#22c55e',
-              weight: 3,
-              opacity: 0.8,
-              fill: true,
-              fillColor: isDarkMode ? '#991b1b' : '#22c55e',
-              fillOpacity: 0.25
-            }}
-          />
-        )}
-
-        <PropertyClusterLayer
-          properties={filteredProperties}
-          isDarkMode={isDarkMode}
-          onSelectProperty={(prop) => {
-            setSelectedProperty(prop);
-            setShowDetailsModal(true);
+      {isLoaded ? (
+        <GoogleMap
+          mapContainerStyle={{ height: '100%', width: '100%' }}
+          options={mapOptions}
+          onLoad={(map) => {
+            mapRef.current = map;
+            map.setCenter(initialCenter);
+            map.setZoom(initialZoom);
+            setIsMapReady(true);
           }}
-        />
+          onClick={handleMapClick}
+        >
+          {/* METRO LINES OVERLAY (native polylines controlled in useEffect) */}
 
-        {/* Map Click Handler */}
-        <MapClickHandler onMapClick={handleMapClick} />
-        
-        {/* Area Zoom Handler */}
-        <AreaZoomHandler areaBounds={areaBounds} />
-      </MapContainer>
+          {/* METRO STATION MARKERS */}
+          {showMetro && stationIcons && (
+            <>
+              {metroStations.purple.map((station) => (
+                <Marker
+                  key={station.id}
+                  position={station.position}
+                  icon={stationIcons.purple}
+                  zIndex={1200}
+                  onMouseOver={() => setHoveredStation(station)}
+                  onMouseOut={() => setHoveredStation(null)}
+                />
+              ))}
+              {metroStations.aqua.map((station) => (
+                <Marker
+                  key={station.id}
+                  position={station.position}
+                  icon={stationIcons.aqua}
+                  zIndex={1200}
+                  onMouseOver={() => setHoveredStation(station)}
+                  onMouseOut={() => setHoveredStation(null)}
+                />
+              ))}
+            </>
+          )}
+
+          {showMetro && hoveredStation && (
+            <InfoWindow
+              position={hoveredStation.position}
+              onCloseClick={() => setHoveredStation(null)}
+            >
+              <div className="metro-station-tooltip">
+                <div className="metro-station-tooltip-title">{hoveredStation.name}</div>
+                {hoveredStation.name_hi && <div>{hoveredStation.name_hi}</div>}
+                {hoveredStation.name_mr && <div>{hoveredStation.name_mr}</div>}
+              </div>
+            </InfoWindow>
+          )}
+          {/* PROPERTY MARKERS WITH CLUSTERING */}
+          <MarkerClusterer
+            styles={buildClusterStyles(isDarkMode)}
+            gridSize={60}
+            minimumClusterSize={2}
+            zoomOnClick={false}
+            onClick={handleClusterClick}
+          >
+            {(clusterer) =>
+              filteredProperties.map((prop) => {
+                const icon = createMarkerIcon(prop, isDarkMode);
+                return (
+                  <Marker
+                    key={`${prop.id}-${isDarkMode}`}
+                    position={{ lat: prop.lat, lng: prop.lng }}
+                    icon={{
+                      url: icon.url,
+                      scaledSize: new window.google.maps.Size(icon.width, icon.height),
+                      anchor: new window.google.maps.Point(icon.width / 2, icon.height / 2)
+                    }}
+                    clusterer={clusterer}
+                    onClick={() => {
+                      setSelectedProperty(prop);
+                      setShowDetailsModal(true);
+                    }}
+                  />
+                );
+              })
+            }
+          </MarkerClusterer>
+        </GoogleMap>
+      ) : (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+          color: isDarkMode ? '#fff' : '#000'
+        }}>
+          Loading map...
+        </div>
+      )}
 
       {/* FLOATING INFO - Click to Add Property */}
       <div className="floating-actions">
@@ -951,6 +1300,15 @@ export default function App() {
           💡 Click anywhere on the map to add a flat listing
         </div>
       </div>
+
+      <a
+        className="made-by-pill"
+        href="https://www.linkedin.com/in/tejas-redkar21"
+        target="_blank"
+        rel="noreferrer"
+      >
+        Built by Tejas Redkar
+      </a>
 
       {/* PROPERTY DETAILS MODAL */}
       {showDetailsModal && selectedProperty && (
@@ -1084,31 +1442,33 @@ export default function App() {
               </div>
 
               {/* Owner Details */}
-              <div style={{
-                padding: '12px',
-                backgroundColor: isDarkMode ? '#222' : '#f5f5f5',
-                borderRadius: '8px',
-                borderLeft: `4px solid #10b981`
-              }}>
+              {hasOwnerDetails && (
                 <div style={{
-                  fontSize: '12px',
-                  color: isDarkMode ? '#aaa' : '#666',
-                  marginBottom: '8px'
-                }}>👤 Owner Details</div>
-                {selectedProperty.owner_name && (
+                  padding: '12px',
+                  backgroundColor: isDarkMode ? '#222' : '#f5f5f5',
+                  borderRadius: '8px',
+                  borderLeft: `4px solid #10b981`
+                }}>
                   <div style={{
-                    fontSize: '14px',
-                    color: isDarkMode ? '#ddd' : '#333',
-                    marginBottom: '4px'
-                  }}>Name: <span style={{ fontWeight: '600' }}>{selectedProperty.owner_name}</span></div>
-                )}
-                {selectedProperty.owner_phone && (
-                  <div style={{
-                    fontSize: '14px',
-                    color: isDarkMode ? '#ddd' : '#333'
-                  }}>Phone: <span style={{ fontWeight: '600' }}>{selectedProperty.owner_phone}</span></div>
-                )}
-              </div>
+                    fontSize: '12px',
+                    color: isDarkMode ? '#aaa' : '#666',
+                    marginBottom: '8px'
+                  }}>👤 Owner Details</div>
+                  {ownerName && (
+                    <div style={{
+                      fontSize: '14px',
+                      color: isDarkMode ? '#ddd' : '#333',
+                      marginBottom: '4px'
+                    }}>Name: <span style={{ fontWeight: '600' }}>{ownerName}</span></div>
+                  )}
+                  {ownerPhone && (
+                    <div style={{
+                      fontSize: '14px',
+                      color: isDarkMode ? '#ddd' : '#333'
+                    }}>Phone: <span style={{ fontWeight: '600' }}>{ownerPhone}</span></div>
+                  )}
+                </div>
+              )}
 
               {/* Description */}
               {selectedProperty.description && (

@@ -6,6 +6,31 @@
   --panel-radius-sm: 14px;
 }
 
+.gm-style .gm-style-iw-c {
+  border-radius: 0;
+  padding: 0;
+}
+
+.gm-style .gm-style-iw-d {
+  overflow: hidden;
+}
+
+.gm-style .gm-style-iw-t::after {
+  display: none;
+}
+
+.metro-station-tooltip {
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 10px 12px;
+  min-width: 120px;
+}
+
+.metro-station-tooltip-title {
+  font-weight: 700;
+  font-size: 15px;
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
 }
@@ -302,6 +327,30 @@ body {
   flex-direction: column;
   align-items: flex-end;
   gap: 12px;
+}
+
+.made-by-pill {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 1000;
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--panel-text);
+  background: var(--panel-bg);
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--panel-shadow-soft);
+  pointer-events: auto;
+  text-align: center;
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.made-by-pill:hover {
+  transform: translateX(-50%) scale(1.02);
 }
 
 .fab-button {
