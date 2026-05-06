@@ -3,6 +3,15 @@ from datetime import datetime
 
 db = SQLAlchemy()
 
+class IPRateLimit(db.Model):
+    __tablename__ = 'ip_rate_limits'
+
+    id = db.Column(db.Integer, primary_key=True)
+    ip_address = db.Column(db.String(64), nullable=False, unique=True, index=True)
+    submission_count = db.Column(db.Integer, default=1, nullable=False)
+    window_start = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    blocked_until = db.Column(db.DateTime, default=None, nullable=True)
+
 class Property(db.Model):
     __tablename__ = 'properties'
     
