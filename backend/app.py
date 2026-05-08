@@ -1,9 +1,10 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from models import db, Property
+from models import db, Property, IPRateLimit
 import os
 from dotenv import load_dotenv
 from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import datetime, timedelta
 import logging
 
 load_dotenv()
@@ -51,6 +52,50 @@ CORS(app, resources={
 with app.app_context():
     db.create_all()
 
+# ============ IP RATE LIMITING ============
+
+RATE_LIMIT_MAX = 3          # max pins per window
+RATE_LIMIT_WINDOW_HOURS = 12
+
+def get_client_ip():
+    forwarded_for = request.headers.get('X-Forwarded-For', '')
+    if forwarded_for:
+        return forwarded_for.split(',')[0].strip()
+    return request.remote_addr
+
+def is_rate_limited(ip: str) -> bool:
+    """Return True if this IP has exceeded the submission limit. Side-effect: updates the DB record."""
+    now = datetime.utcnow()
+    record = IPRateLimit.query.filter_by(ip_address=ip).first()
+
+    if record is None:
+        db.session.add(IPRateLimit(ip_address=ip, submission_count=1, window_start=now))
+        db.session.commit()
+        return False
+
+    # Still inside an active block
+    if record.blocked_until and now < record.blocked_until:
+        return True
+
+    window_age = now - record.window_start
+    if window_age > timedelta(hours=RATE_LIMIT_WINDOW_HOURS):
+        # Window expired — reset
+        record.submission_count = 1
+        record.window_start = now
+        record.blocked_until = None
+        db.session.commit()
+        return False
+
+    record.submission_count += 1
+    if record.submission_count > RATE_LIMIT_MAX:
+        record.blocked_until = now + timedelta(hours=RATE_LIMIT_WINDOW_HOURS)
+        db.session.commit()
+        return True
+
+    db.session.commit()
+    return False
+
+
 # ============ BACKGROUND SCHEDULER ============
 # Keep-alive job to prevent server spin-down on free-tier deployments
 def keep_alive_job():
@@ -63,6 +108,22 @@ def keep_alive_job():
     except Exception as e:
         logger.error(f'✗ Keep-alive check failed: {str(e)}')
 
+def cleanup_rate_limits():
+    """Remove expired IPRateLimit records older than the window (runs every hour)."""
+    try:
+        with app.app_context():
+            cutoff = datetime.utcnow() - timedelta(hours=RATE_LIMIT_WINDOW_HOURS)
+            expired = IPRateLimit.query.filter(
+                IPRateLimit.window_start < cutoff,
+                (IPRateLimit.blocked_until == None) | (IPRateLimit.blocked_until < datetime.utcnow())
+            ).all()
+            for record in expired:
+                db.session.delete(record)
+            db.session.commit()
+    except Exception as e:
+        logger.error(f'✗ Rate limit cleanup failed: {str(e)}')
+
+
 # Initialize scheduler
 scheduler = BackgroundScheduler(daemon=True)
 scheduler.add_job(
@@ -71,6 +132,14 @@ scheduler.add_job(
     seconds=50,
     id='keep_alive_job',
     name='Keep Backend Alive',
+    replace_existing=True
+)
+scheduler.add_job(
+    func=cleanup_rate_limits,
+    trigger='interval',
+    hours=1,
+    id='cleanup_rate_limits',
+    name='Cleanup Expired Rate Limits',
     replace_existing=True
 )
 
@@ -111,12 +180,35 @@ def create_property():
     """Create a new property listing"""
     try:
         data = request.get_json()
-        
+
         # Validate required fields
         required_fields = ['lat', 'lng', 'price', 'config', 'area']
         if not all(field in data for field in required_fields):
             return jsonify({'error': 'Missing required fields'}), 400
-        
+
+        client_ip = get_client_ip()
+        if is_rate_limited(client_ip):
+            # Silent drop — return a plausible success response without persisting
+            fake_id = abs(hash(client_ip + str(datetime.utcnow().minute))) % 1_000_000
+            return jsonify({
+                'message': 'Property created successfully',
+                'property': {
+                    'id': fake_id,
+                    'lat': float(data['lat']),
+                    'lng': float(data['lng']),
+                    'price': data['price'],
+                    'config': data['config'],
+                    'area': data['area'],
+                    'society_name': data.get('society_name', ''),
+                    'flag': data.get('flag', None),
+                    'description': data.get('description', ''),
+                    'owner_name': data.get('owner_name', ''),
+                    'owner_phone': data.get('owner_phone', ''),
+                    'created_at': datetime.utcnow().isoformat(),
+                    'updated_at': datetime.utcnow().isoformat(),
+                }
+            }), 201
+
         new_property = Property(
             lat=float(data['lat']),
             lng=float(data['lng']),
