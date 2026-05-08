@@ -1,0 +1,158 @@
+{
+  "pune_metro": {
+    "purple_line": [
+      {
+        "english": "PCMC Bhavan",
+        "marathi": "पिंपरी-चिंचवड महानगरपालिका भवन",
+        "coordinates": { "latitude": 18.62947296353502, "longitude": 73.80326535403765 }
+      },
+      {
+        "english": "Sant Tukaram Nagar",
+        "marathi": "संत तुकाराम नगर",
+        "coordinates": { "latitude": 18.61450173472424, "longitude": 73.81574843674665 }
+      },
+      {
+        "english": "Bhosari (Nashik Phata)",
+        "marathi": "भोसरी (नाशिक फाटा)",
+        "coordinates": { "latitude": 18.609330734585715, "longitude": 73.82022853481281 }
+      },
+      {
+        "english": "Kasarwadi",
+        "marathi": "कासारवाडी",
+        "coordinates": { "latitude": 18.599688840253098, "longitude": 73.82734499710489 }
+      },
+      {
+        "english": "Phugewadi",
+        "marathi": "फुगेवाडी",
+        "coordinates": { "latitude": 18.59116355905932, "longitude": 73.83119032020217 }
+      },
+      {
+        "english": "Dapodi",
+        "marathi": "दापोडी",
+        "coordinates": { "latitude": 18.58378606954214, "longitude": 73.83380955968977 }
+      },
+      {
+        "english": "Bopodi",
+        "marathi": "बोपोडी",
+        "coordinates": { "latitude": 18.56973017067218, "longitude": 73.83812084858766 }
+      },
+      {
+        "english": "Khadki",
+        "marathi": "खडकी",
+        "coordinates": { "latitude": 18.562348729378144, "longitude": 73.8420818128756 }
+      },
+      {
+        "english": "Range Hills",
+        "marathi": "रेंज हिल्स",
+        "coordinates": { "latitude": 18.550042744185884, "longitude": 73.84591978724545 }
+      },
+      {
+        "english": "Shivaji Nagar",
+        "marathi": "शिवाजी नगर",
+        "coordinates": { "latitude": 18.532481054463645, "longitude": 73.84916861255657 }
+      },
+      {
+        "english": "Civil Court",
+        "marathi": "जिल्हा न्यायालय",
+        "coordinates": { "latitude": 18.526784850543972, "longitude": 73.85781288788883 }
+      },
+      {
+        "english":"Kasba Peth",
+        "marathi": "कसबा पेठ",
+        "coordinates": { "latitude": 18.5215579698834, "longitude": 73.85966954665071 }
+      },
+      {
+        "english": "Mandai",
+        "marathi": "मंडई",
+        "coordinates": { "latitude": 18.512707933343144, "longitude": 73.85734915478095 }
+      },
+      {
+        "english": "Swargate",
+        "marathi": "स्वारगेट",
+        "coordinates": { "latitude": 18.50090585793643, "longitude": 73.856904940704}
+      }
+    ],
+    "aqua_line": [
+      {
+        "english": "Vanaz",
+        "marathi": "वनज",
+        "coordinates": { "latitude": 18.50731337200656, "longitude": 73.80536921351118 }
+      },
+      {
+        "english": "Anand Nagar",
+        "marathi": "आनंद नगर",
+        "coordinates": { "latitude": 18.50959198168491, "longitude": 73.8140626918806}
+      },
+      {
+        "english": "Ideal Colony",
+        "marathi": "आइडियल कॉलनी",
+        "coordinates": { "latitude": 18.50901658014172, "longitude": 73.82215321796207 }
+      },
+      {
+        "english": "Nal Stop",
+        "marathi": "नल स्टॉप",
+        "coordinates": { "latitude": 18.507364011766807, "longitude": 73.82878384564509 }
+      },
+      {
+        "english": "Garware College",
+        "marathi": "गरवारे कॉलेज",
+        "coordinates": { "latitude": 18.51225295450869, "longitude": 73.83818777735964 }
+      },
+      {
+        "english": "Deccan Gymkhana",
+        "marathi": "डेक्कन जिमखाना",
+        "coordinates": { "latitude": 18.516262516163412, "longitude": 73.84435708805562 }
+      },
+      {
+        "english": "Chhatrapati Sambhaji Udyan",
+        "marathi": "छत्रपती संभाजी उद्यान",
+        "coordinates": { "latitude": 18.520087992467413, "longitude": 73.8476118812484 }
+      },
+      {
+        "english": "PMC Bhavan",
+        "marathi": "पुणे महानगरपालिका भवन",
+        "coordinates": { "latitude": 18.522773026451087, "longitude": 73.85355748287253 }
+      },
+      {
+        "english": "Civil Court",
+        "marathi": "जिल्हा न्यायालय",
+        "coordinates": { "latitude": 18.526784850543972, "longitude": 73.85781288788883 }
+      },
+      {
+        "english": "Mangalwar Peth",
+        "marathi": "मंगळवार पेठ",
+        "coordinates": { "latitude": 18.530078449702145, "longitude": 73.8652444919513}
+      },
+      {
+        "english": "Pune Railway Station",
+        "marathi": "पुणे रेल्वे स्थानक",
+        "coordinates": { "latitude": 18.529662154742997, "longitude": 73.87256121372947 }
+      },
+      {
+        "english": "Ruby Hall Clinic",
+        "marathi": "रुबी हॉल क्लिनिक",
+        "coordinates": { "latitude": 18.532684862956195, "longitude": 73.87785230666772 }
+      },
+      {
+        "english": "Bund Garden",
+        "marathi": "बंड गार्डन",
+        "coordinates": { "latitude": 18.540790586370022, "longitude": 73.88359918321343 }
+      },
+      {
+        "english": "Yerwada",
+        "marathi": "येरवडा",
+        "coordinates": { "latitude": 18.545355739372017, "longitude": 73.88679144661499 }
+      },
+      {
+        "english": "Kalyani Nagar",
+        "marathi": "कल्याणी नगर",
+        "coordinates": { "latitude": 18.545139574099284, "longitude": 73.90584648972008 }
+      },
+      {
+        "english": "Ramwadi",
+        "marathi": "रामवाडी",
+        "coordinates": { "latitude": 18.55768422132206, "longitude": 73.90894480684021 }
+      }
+    ]
+  }
+}
