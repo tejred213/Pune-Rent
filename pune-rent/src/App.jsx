@@ -415,6 +415,7 @@ export default function App() {
   // State for auto-geocoding
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodingStatus, setGeocodingStatus] = useState('');
+  const [isSocietyFound, setIsSocietyFound] = useState(false);
 
   const ownerName = selectedProperty?.owner_name?.toString().trim();
   const ownerPhone = selectedProperty?.owner_phone?.toString().trim();
@@ -472,24 +473,25 @@ export default function App() {
 
   // Auto-geocode when both area and society_name are provided
   useEffect(() => {
+    // Reset found-state whenever inputs change; only confirm after a successful lookup
+    setIsSocietyFound(false);
+
     const performGeocoding = async () => {
       if (formData.area && formData.society_name && showAddModal) {
         setIsGeocoding(true);
         setGeocodingStatus('Looking up location...');
-        
+
         const coords = await geocodeBuilding(formData.society_name, formData.area);
-        
+
         if (coords) {
           setSelectedCoords(coords);
+          setIsSocietyFound(true);
           setGeocodingStatus('✓ Location found and pin placed');
-          // Clear status after 2 seconds
-          setTimeout(() => setGeocodingStatus(''), 2000);
         } else {
-          setGeocodingStatus('Could not find location. Pin stays at clicked position.');
-          // Clear status after 3 seconds
-          setTimeout(() => setGeocodingStatus(''), 3000);
+          setIsSocietyFound(false);
+          setGeocodingStatus('Could not find this society. Please check the name — adding is disabled until a real location is found.');
         }
-        
+
         setIsGeocoding(false);
       }
     };
@@ -531,6 +533,11 @@ export default function App() {
       return;
     }
 
+    if (!isSocietyFound || !selectedCoords) {
+      alert('We could not locate this society. Please check the society name and area before adding.');
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       const response = await fetch(`${API_BASE_URL}/properties`, {
@@ -568,6 +575,8 @@ export default function App() {
         description: ''
       });
       setSelectedCoords(null);
+      setIsSocietyFound(false);
+      setGeocodingStatus('');
     } catch (err) {
       console.error('Error adding property:', err);
       alert('Failed to add property');
@@ -1834,20 +1843,34 @@ export default function App() {
                 </button>
                 <button
                   onClick={handleSubmitProperty}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isGeocoding || !isSocietyFound}
+                  title={
+                    !formData.area || !formData.society_name
+                      ? 'Enter Area and Society Name first'
+                      : isGeocoding
+                        ? 'Looking up society location...'
+                        : !isSocietyFound
+                          ? 'Society not found — adding is disabled to prevent spam pins'
+                          : ''
+                  }
                   style={{
                     padding: '12px 16px',
                     border: 'none',
                     borderRadius: '8px',
-                    backgroundColor: isSubmitting ? '#999' : '#3b82f6',
+                    backgroundColor: (isSubmitting || isGeocoding || !isSocietyFound) ? '#999' : '#3b82f6',
                     color: '#ffffff',
-                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                    cursor: (isSubmitting || isGeocoding || !isSocietyFound) ? 'not-allowed' : 'pointer',
                     fontWeight: '600',
                     fontSize: '14px',
-                    transition: 'all 0.2s ease'
+                    transition: 'all 0.2s ease',
+                    opacity: (isSubmitting || isGeocoding || !isSocietyFound) ? 0.7 : 1
                   }}
                 >
-                  {isSubmitting ? 'Adding...' : '+ Add Property'}
+                  {isSubmitting
+                    ? 'Adding...'
+                    : isGeocoding
+                      ? 'Verifying location...'
+                      : '+ Add Property'}
                 </button>
               </div>
             </div>
