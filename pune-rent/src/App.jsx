@@ -346,18 +346,39 @@ const geocodeBuilding = async (buildingName, areaName) => {
     }
     
     const data = await response.json();
-    
+
     // Check if Google returned valid results
     if (data.status === 'OK' && data.results.length > 0) {
-      const { lat, lng } = data.results[0].geometry.location;
+      const top = data.results[0];
+
+      // Reject partial matches — Google falls back to the surrounding area
+      // when it can't find the exact building, which is exactly the
+      // junk-society case we want to block.
+      if (top.partial_match) {
+        return null;
+      }
+
+      // Reject results that resolved only to area-level types (locality /
+      // sublocality / political) with no building-level type, since those
+      // are the neighborhood pin, not a specific society.
+      const types = top.types || [];
+      const buildingTypes = ['premise', 'subpremise', 'establishment', 'point_of_interest', 'street_address'];
+      const areaOnlyTypes = ['locality', 'sublocality', 'sublocality_level_1', 'sublocality_level_2', 'sublocality_level_3', 'political', 'administrative_area_level_1', 'administrative_area_level_2', 'administrative_area_level_3', 'country', 'route'];
+      const hasBuildingType = types.some((t) => buildingTypes.includes(t));
+      const isAreaOnly = types.length > 0 && types.every((t) => areaOnlyTypes.includes(t));
+      if (!hasBuildingType && isAreaOnly) {
+        return null;
+      }
+
+      const { lat, lng } = top.geometry.location;
       return [lat, lng];
     }
-    
+
     // Return null if no results or API returned an error
     if (data.status !== 'OK') {
       console.warn(`Geocoding API returned status: ${data.status}`);
     }
-    
+
     return null;
   } catch (error) {
     console.error('Geocoding error:', error);
