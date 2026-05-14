@@ -11,6 +11,7 @@ load_dotenv()
 
 app = Flask(__name__)
 
+# Configure logging for scheduler
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -95,6 +96,18 @@ def is_rate_limited(ip: str) -> bool:
     return False
 
 
+# ============ BACKGROUND SCHEDULER ============
+# Keep-alive job to prevent server spin-down on free-tier deployments
+def keep_alive_job():
+    """Periodic job to keep backend alive (runs every 50 seconds)"""
+    try:
+        with app.app_context():
+            # Perform a simple database query to keep connection active
+            Property.query.count()
+            logger.info('✓ Keep-alive check: Backend is active')
+    except Exception as e:
+        logger.error(f'✗ Keep-alive check failed: {str(e)}')
+
 def cleanup_rate_limits():
     """Remove expired IPRateLimit records older than the window (runs every hour)."""
     try:
@@ -111,7 +124,16 @@ def cleanup_rate_limits():
         logger.error(f'✗ Rate limit cleanup failed: {str(e)}')
 
 
+# Initialize scheduler
 scheduler = BackgroundScheduler(daemon=True)
+scheduler.add_job(
+    func=keep_alive_job,
+    trigger='interval',
+    seconds=50,
+    id='keep_alive_job',
+    name='Keep Backend Alive',
+    replace_existing=True
+)
 scheduler.add_job(
     func=cleanup_rate_limits,
     trigger='interval',
@@ -121,8 +143,10 @@ scheduler.add_job(
     replace_existing=True
 )
 
+# Start scheduler if not already running
 if not scheduler.running:
     scheduler.start()
+    logger.info('✓ Background scheduler started - Keep-alive job running every 50 seconds')
 
 # ============ API ROUTES ============
 
